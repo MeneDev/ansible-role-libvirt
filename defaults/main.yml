@@ -1,0 +1,5 @@
+---
+# defaults file for menedev.libvirt
+create_libvirt_group: True
+libvirt_group: libvirt
+libvirt_polkit_rules: 80-libvirt.rules

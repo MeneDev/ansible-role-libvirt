@@ -1,0 +1,54 @@
+---
+# tasks file for menedev.libvirt
+
+- name: Check CPU support
+  shell: egrep '^flags.*(vmx|svm)' /proc/cpuinfo
+  register: cmd_check
+  failed_when: cmd_check.stdout == ""
+  changed_when: False
+
+- name: Install libvirt
+  become: True
+  dnf:
+    name: "@virtualization"
+    state: present
+
+- name: Ensure libvirt group exists
+  group:
+    name: "{{ libvirt_group }}"
+    state: present
+  when: create_libvirt_group
+
+- name: Ensure users is member of libvirt group
+  become: yes
+  user:
+    name: "{{ ansible_user_id }}"
+    groups: "{{ libvirt_group }}"
+    append: yes
+  when: create_libvirt_group
+
+- name: Try to refresh groups
+  shell: newgrp libvirt
+  ignore_errors: True
+  changed_when: False
+  when: create_libvirt_group
+
+- name: Setup Polkit Rule
+  become: True
+  template:
+    src: libvirt.rules
+    dest: "/etc/polkit-1/rules.d/{{ libvirt_polkit_rules }}"
+  when: create_libvirt_group
+
+- name: Start libvird now and at sytem startup
+  become: True
+  service:
+    name: libvirtd
+    enabled: True
+    state: restarted
+
+- name: Verify module is loaded
+  shell: lsmod | egrep '(kvm_amd|kvm_intel)'
+  register: cmd_check
+  failed_when: cmd_check.stdout == ""
+  changed_when: False
